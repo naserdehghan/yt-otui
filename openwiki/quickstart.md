@@ -42,8 +42,8 @@ yt-otui/
 │   │   │   ├── PlaylistDoneScreen.tsx        # Summary: succeeded/failed per entry
 │   │   │   └── types.ts                     # PlaylistItemState type
 │   │   ├── settings/
-│   │   │   ├── SettingsModal.tsx    # Settings overlay: download directory mode
-│   │   │   └── config.ts           # AppConfig type, persistence, download dir resolution
+│   │   │   ├── SettingsModal.tsx    # Settings overlay: download directory mode and browser cookies for age-restricted content
+│   │   │   └── config.ts           # AppConfig type, persistence, download dir resolution, cookie browser config
 │   │   └── url/
 │   │       └── UrlScreen.tsx        # URL input with error display
 │   └── shared/
@@ -110,10 +110,10 @@ Tiers are tried in descending order: 2160, 1440, 1080, 720, 480, 360. Tiers abov
 All yt-dlp calls are made via `Bun.spawn` with stdout/stderr pipes:
 
 - **`checkYtDlpInstalled()`** — uses `Bun.which("yt-dlp")` to verify the CLI exists on PATH
-- **`fetchInfo(url, opts?)`** — runs `yt-dlp -J --flat-playlist <url>` (with `--no-playlist` when `opts.noPlaylist` is true), parses JSON output. Returns `VideoInfo` for single videos or `PlaylistInfo` (with `entries[]`) when the JSON includes an `entries` array. Throws on non-zero exit with last 5 stderr lines.
+- **`fetchInfo(url, opts?)`** — runs `yt-dlp -J --flat-playlist <url>` (with `--no-playlist` when `opts.noPlaylist` is true, `--cookies-from-browser` when `opts.cookiesFromBrowser` is set). Parses JSON output. Returns `VideoInfo` for single videos or `PlaylistInfo` (with `entries[]`) when the JSON includes an `entries` array. Throws on non-zero exit with last 5 stderr lines.
 - **`parseYouTubeUrl(url)`** — extracts `videoId` and `listId` from a YouTube URL to detect playlist association before fetching.
-- **`downloadVideo(url, formatArgs, downloadDir, onProgress)`** — runs yt-dlp with `--newline` + a custom `--progress-template`, parses `PROG|...` lines for real-time progress, detects final path from `[Merger]` / `[download] / `[ExtractAudio]` output lines. The download directory is resolved from config via `resolveDownloadDir(config)` in `App.tsx`.
-- **`downloadPlaylist(entries, formatArgs, downloadDir, onItemUpdate)`** — iterates playlist entries, calling `downloadVideo` for each and reporting per-item status (downloading/done/error) via the callback. All entries share the same format args and download directory.
+- **`downloadVideo(url, formatArgs, downloadDir, onProgress, cookiesFromBrowser?)`** — runs yt-dlp with `--newline` + a custom `--progress-template`, parses `PROG|...` lines for real-time progress, detects final path from `[Merger]` / `[download] / `[ExtractAudio]` output lines. The download directory is resolved from config via `resolveDownloadDir(config)` in `App.tsx`. Passes `--cookies-from-browser` when configured.
+- **`downloadPlaylist(entries, formatArgs, downloadDir, onItemUpdate, cookiesFromBrowser?)`** — iterates playlist entries, calling `downloadVideo` for each and reporting per-item status (downloading/done/error) via the callback. All entries share the same format args, download directory, and cookie browser setting.
 
 ### Keyboard Navigation
 
@@ -124,7 +124,7 @@ All yt-dlp calls are made via `Bun.spawn` with stdout/stderr pipes:
 | Esc | Done / Playlist Done screen | Quit |
 | q | Done / Playlist Done screen | Quit |
 | n | Done / Playlist Done screen | New download (reset to URL) |
-| Ctrl+Shift+/ | Any | Toggle settings modal (download directory) |
+| Ctrl+Shift+/ | Any | Toggle settings modal (download directory + browser cookies) |
 | Enter | URL screen | Submit URL |
 | Enter | Format / Playlist Format screen | Select highlighted format |
 | Enter | Playlist Choice screen | Confirm choice (video or playlist) |
@@ -134,7 +134,7 @@ All yt-dlp calls are made via `Bun.spawn` with stdout/stderr pipes:
 - **yt-dlp not found:** The app exits immediately at startup with a message directing the user to install it (`brew install yt-dlp`).
 - **Invalid URL / fetch failure:** Error message displayed on the URL screen. The user can retry.
 - **Download failure:** Returns to URL screen with the error message. Check yt-dlp version (`yt-dlp --version`) and network connectivity.
-- **Config file:** Settings are persisted at `~/.config/yt-otui/config.json`. Delete this file to reset to defaults.
+- **Config file:** Settings (download directory mode, browser cookie source) are persisted at `~/.config/yt-otui/config.json`. Delete this file to reset to defaults.
 - **Force quit:** If the app hangs, Ctrl+C kills it (handled by `createCliRenderer({ exitOnCtrlC: true })`).
 - **Typecheck:** Run `bun run typecheck` (which runs `tsc --noEmit`) to verify type correctness.
 
@@ -163,7 +163,7 @@ This project has no formal test suite. Practical verification approaches:
 
 - **Adding a screen:** Define the new shape in the `Screen` union type in `src/app/types.ts`, create a feature module under `src/features/<name>/` with a barrel `index.ts`, and add a `case` in the switch statement in `src/app/App.tsx`.
 - **Modifying format options:** Edit `src/features/format/formats.ts` — update the `TIERS` array or add entries to the curated list. For playlist downloads, `defaultFormatOptions()` returns all tiers without per-video filtering; single-video filtering stays in `curateFormats()`.
-- **Changing download output:** Edit `src/config.ts` — the `resolveDownloadDir()` function and config schema define download modes. The settings modal (`src/components/SettingsModal.tsx`) lets users pick the mode at runtime. Playlist downloads create a subfolder named after the playlist title under the configured directory.
+- **Changing download output or cookie settings:** Edit `src/features/settings/config.ts` — the `resolveDownloadDir()` function, `CookieBrowser` type, and config schema define download modes and cookie browser source. The settings modal (`src/features/settings/SettingsModal.tsx`) lets users pick the mode at runtime. Playlist downloads create a subfolder named after the playlist title under the configured directory.
 - **Keyboard shortcuts:** Edit the `useKeyboard` hook in `App.tsx`.
 - **Playlist behavior:** The URL router in `handleUrlSubmit` first calls `parseYouTubeUrl()` to detect playlist association, then `fetchInfo()` to decide if the response is a playlist. Adding support for other platforms' playlists would require updating `fetchInfo` (it already handles generic `entries` arrays) and the `parseYouTubeUrl` regex.
 - **OpenTUI version bumps:** Check `@opentui/core` and `@opentui/react` in `package.json`. The `tsconfig.json` JSX configuration is OpenTUI-specific.
@@ -175,3 +175,5 @@ These areas exist but are not yet covered in depth in these docs:
 | Area | Source anchor | Reason deferred |
 |---|---|---|
 | **Git history** | No `.git` directory in this checkout | No commit history to analyze. If git is initialized later, inspect the log for decisions around screen state machine design and yt-dlp argument handling. |
+|
+nt handling. |

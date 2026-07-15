@@ -103,7 +103,7 @@ createRoot(renderer)
     ├── <PlaylistDoneScreen>       [src/features/playlist/PlaylistDoneScreen.tsx]
     │   └── <box> "Results" (succeeded/failed per entry)
     └── <SettingsModal>            [src/features/settings/SettingsModal.tsx]
-        └── (overlay, shown on Ctrl+Shift+/)
+        └── (overlay, shown on Ctrl+Shift+/) — two config sections: download directory mode and browser cookie selection
 ```
 
 All screen components are direct children of `<App>` — there is no router or navigation stack. Only one screen is rendered at a time due to the switch-case in the render function.
@@ -186,6 +186,8 @@ The app does not use yt-dlp as a library — it spawns it as a subprocess via `B
 
 The download directory is no longer hardcoded: `downloadVideo()` accepts a `downloadDir` parameter, resolved by `resolveDownloadDir(config)` in `src/features/settings/config.ts`. The user can choose between `~/Downloads`, the current working directory, or a custom path via the settings modal.
 
+The app also supports browser cookies via yt-dlp's `--cookies-from-browser` flag for age-restricted downloads. `fetchInfo()`, `downloadVideo()`, and `downloadPlaylist()` all accept an optional `cookiesFromBrowser` parameter. When set (e.g. `"chrome"`, `"firefox"`), the `cookieArgs()` helper adds the flag to the yt-dlp subprocess arguments. The browser source is configurable through the settings modal alongside the download directory, and persisted in `config.json`.
+
 **2. Format curation is separate from raw data** (`src/features/format/formats.ts`)
 Raw yt-dlp format lists can be 20–50 entries. The curation layer reduces this to a predictable set of options:
 - One "Best available" catch-all.
@@ -227,7 +229,7 @@ useKeyboard((key) => {
 })
 ```
 
-`Ctrl+Shift+/` (or `Ctrl+_` in terminals without the Kitty keyboard protocol) toggles the settings modal. When the modal is open, keyboard events are blocked from reaching the screen-level handlers. Focused inputs (`UrlScreen`'s `<input>`, `FormatScreen`'s `<select>`) receive key events first via OpenTUI's focus system.
+`Ctrl+Shift+/` (or `Ctrl+_` in terminals without the Kitty keyboard protocol) toggles the settings modal. The modal has two configurable sections (download directory and browser cookies) navigable via arrow keys. When the modal is open, keyboard events are blocked from reaching the screen-level handlers. Focused inputs (`UrlScreen`'s `<input>`, `FormatScreen`'s `<select>`) receive key events first via OpenTUI's focus system.
 
 The `quit()` function calls `renderer.destroy()` before `process.exit(0)` to properly restore terminal state and prevent rendering artifacts. This was introduced (commit `b7734f0`) after noticing that an unclean exit could leave the terminal in a broken state.
 
@@ -248,6 +250,13 @@ The error messages are the last 5 lines of yt-dlp's stderr, which typically cont
 |---|---|---|
 | `@opentui/core` | ^0.4.3 | Terminal renderer, layout engine (Yoga flexbox), renderable primitives |
 | `@opentui/react` | ^0.4.3 | React bindings for OpenTUI (JSX → renderable tree) |
+| `react` | ^19.2.7 | UI component model |
+| `bun-types` | ^1.3.14 | Bun runtime type definitions |
+| `typescript` | ^7.0.2 | Type checking |
+| `yt-dlp` | (external) | Video/audio extraction and download |
+
+Note: TypeScript ^7.0.2 tracks the Bun-bundled version — this is expected and not a mistake.
+.4.3 | React bindings for OpenTUI (JSX → renderable tree) |
 | `react` | ^19.2.7 | UI component model |
 | `bun-types` | ^1.3.14 | Bun runtime type definitions |
 | `typescript` | ^7.0.2 | Type checking |
