@@ -5,6 +5,9 @@
   "private": true,
   "scripts": {
     "start": "bun run src/index.tsx",
+    "build": "bun build ./src/index.tsx --outdir ./dist --target bun",
+    "preview": "bun run dist/index.js",
+    "compile": "bun build --compile ./src/index.tsx --outfile yt-otui",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
