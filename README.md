@@ -1,12 +1,18 @@
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="yt-otui: a terminal YouTube downloader. Paste a URL, pick a quality tier, and download — without leaving the terminal.">
+  <img src="./assets/readme/hero.svg" width="100%" alt="yt-otui: a terminal YouTube downloader. Paste a URL or playlist, pick a quality tier, and download — without leaving the terminal.">
 </p>
 
-**yt-otui** is a keyboard-driven terminal app for downloading YouTube videos. It wraps [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) in a small [OpenTUI](https://opentui.com) + React interface: paste a link, pick a quality, watch real-time progress, get the file path — all in one terminal window.
+**yt-otui** is a keyboard-driven terminal app for downloading YouTube videos and playlists. It wraps [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) in a small [OpenTUI](https://opentui.com) + React interface: paste a link, pick a quality, watch real-time progress, get the file path — all in one terminal window.
 
 <p align="center">
-  <img src="./assets/readme/workflow.svg" width="100%" alt="Screen flow: URL entry, loading, format selection, downloading, and done, with Esc returning to URL entry on error.">
+  <img src="./assets/readme/workflow.svg" width="100%" alt="Screen flow for a single video: URL entry, loading, format selection, downloading, and done, with Esc returning to URL entry on error.">
 </p>
+
+## Why a terminal app
+
+- **Direct process, not a page load.** Every request goes straight to `yt-dlp` over `Bun.spawn` — no browser tab, no ads, no cookie banners. Download progress streams line-by-line from a `--progress-template`, so the speed and ETA you see are live, not polled.
+- **No browser engine.** The UI is OpenTUI's React bindings rendering to terminal cells — the same component/hooks model as a web app, without Electron or Chromium underneath.
+- **One binary.** `bun run compile` produces a standalone executable — copy it anywhere with `yt-dlp` on `$PATH` and run it, no Bun install required at that point.
 
 ## Install & run
 
@@ -17,6 +23,18 @@ bun start
 ```
 
 `yt-otui` checks for `yt-dlp` on `$PATH` at startup and exits with install instructions if it's missing.
+
+## Playlists
+
+Paste a playlist URL, or a video URL that also carries a `list=` param, and yt-otui asks which you meant before committing:
+
+```text
+URL ──▶ Playlist Choice ──▶ Playlist Format ──▶ Playlist Downloading ──▶ Playlist Done
+          │
+          └─ "just this video" ──▶ regular single-video flow
+```
+
+One format choice applies to every entry. Videos download sequentially into a subfolder named after the playlist title, with a live succeeded/failed status per entry and a summary on completion.
 
 ## Quality tiers
 
@@ -39,6 +57,8 @@ Format lists from `yt-dlp` are curated into a fixed set of options (`src/feature
 | `q` | Done | Quit |
 | `n` | Done | Start a new download |
 | `Ctrl+Shift+/` | Any | Toggle download-directory settings |
+
+`Ctrl+Shift+/` needs a terminal that supports the Kitty keyboard protocol (kitty, WezTerm, iTerm2, Ghostty). Elsewhere, use `Ctrl+_`.
 
 ## Configuration
 
