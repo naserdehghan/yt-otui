@@ -45,6 +45,12 @@ export function checkYtDlpInstalled(): boolean {
   return Bun.which("yt-dlp") !== null
 }
 
+function cookieArgs(cookiesFromBrowser?: string): string[] {
+  return cookiesFromBrowser && cookiesFromBrowser !== "none"
+    ? ["--cookies-from-browser", cookiesFromBrowser]
+    : []
+}
+
 export function parseYouTubeUrl(url: string): { videoId: string | null; listId: string | null } {
   try {
     const parsed = new URL(url)
@@ -73,10 +79,11 @@ function isPlaylistInfo(data: unknown): data is { title?: string; entries: unkno
 
 export async function fetchInfo(
   url: string,
-  opts?: { noPlaylist?: boolean },
+  opts?: { noPlaylist?: boolean; cookiesFromBrowser?: string },
 ): Promise<VideoInfo | PlaylistInfo> {
   const args = ["yt-dlp", "-J", "--flat-playlist"]
   if (opts?.noPlaylist) args.push("--no-playlist")
+  args.push(...cookieArgs(opts?.cookiesFromBrowser))
   args.push(url)
 
   const proc = Bun.spawn(args, {
@@ -119,6 +126,7 @@ export async function downloadVideo(
   formatArgs: string[],
   downloadDir: string,
   onProgress: (progress: DownloadProgress) => void,
+  cookiesFromBrowser?: string,
 ): Promise<DownloadResult> {
   const outputTemplate = join(downloadDir, "%(title)s.%(ext)s")
 
@@ -130,6 +138,7 @@ export async function downloadVideo(
       "--newline",
       "--progress-template",
       "PROG|%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s",
+      ...cookieArgs(cookiesFromBrowser),
       "-o",
       outputTemplate,
       url,
@@ -202,14 +211,21 @@ export async function downloadPlaylist(
   formatArgs: string[],
   downloadDir: string,
   onItemUpdate: (index: number, update: PlaylistItemUpdate) => void,
+  cookiesFromBrowser?: string,
 ): Promise<void> {
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i]!
     onItemUpdate(i, { status: "downloading" })
     try {
-      const result = await downloadVideo(entry.url, formatArgs, downloadDir, (progress) => {
-        onItemUpdate(i, { status: "downloading", progress })
-      })
+      const result = await downloadVideo(
+        entry.url,
+        formatArgs,
+        downloadDir,
+        (progress) => {
+          onItemUpdate(i, { status: "downloading", progress })
+        },
+        cookiesFromBrowser,
+      )
       onItemUpdate(i, { status: "done", result })
     } catch (err) {
       onItemUpdate(i, {

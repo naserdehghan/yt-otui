@@ -40,23 +40,26 @@ export function App() {
   const goToVideoFormats = useCallback(async (url: string) => {
     setScreen({ name: "loading", message: "Fetching video info..." })
     try {
-      const info = (await fetchInfo(url, { noPlaylist: true })) as VideoInfo
+      const info = (await fetchInfo(url, {
+        noPlaylist: true,
+        cookiesFromBrowser: config.cookiesFromBrowser,
+      })) as VideoInfo
       const formats = curateFormats(info)
       setScreen({ name: "formats", url, info, formats })
     } catch (err) {
       setScreen({ name: "url", error: err instanceof Error ? err.message : String(err) })
     }
-  }, [])
+  }, [config])
 
   const goToPlaylistFormats = useCallback(async (url: string) => {
     setScreen({ name: "loading", message: "Fetching playlist info..." })
     try {
-      const info = (await fetchInfo(url)) as PlaylistInfo
+      const info = (await fetchInfo(url, { cookiesFromBrowser: config.cookiesFromBrowser })) as PlaylistInfo
       setScreen({ name: "playlist-formats", playlist: info, formats: defaultFormatOptions() })
     } catch (err) {
       setScreen({ name: "url", error: err instanceof Error ? err.message : String(err) })
     }
-  }, [])
+  }, [config])
 
   const handleUrlSubmit = useCallback(
     async (url: string) => {
@@ -68,7 +71,7 @@ export function App() {
 
       setScreen({ name: "loading", message: "Fetching info..." })
       try {
-        const info = await fetchInfo(url)
+        const info = await fetchInfo(url, { cookiesFromBrowser: config.cookiesFromBrowser })
         if ("entries" in info) {
           setScreen({ name: "playlist-formats", playlist: info, formats: defaultFormatOptions() })
         } else {
@@ -79,7 +82,7 @@ export function App() {
         setScreen({ name: "url", error: err instanceof Error ? err.message : String(err) })
       }
     },
-    [],
+    [config],
   )
 
   const handlePlaylistChoice = useCallback(
@@ -102,11 +105,17 @@ export function App() {
       })
       try {
         const downloadDir = resolveDownloadDir(config)
-        const result = await downloadVideo(url, format.args, downloadDir, (progress) => {
-          setScreen((prev) =>
-            prev.name === "downloading" ? { ...prev, progress } : prev,
-          )
-        })
+        const result = await downloadVideo(
+          url,
+          format.args,
+          downloadDir,
+          (progress) => {
+            setScreen((prev) =>
+              prev.name === "downloading" ? { ...prev, progress } : prev,
+            )
+          },
+          config.cookiesFromBrowser,
+        )
         setScreen({ name: "done", filePath: result.filePath, fileSize: result.fileSize })
       } catch (err) {
         setScreen({
@@ -135,23 +144,29 @@ export function App() {
         activeIndex: 0,
       })
 
-      await downloadPlaylist(playlist.entries, format.args, downloadDir, (index, update) => {
-        setScreen((prev) => {
-          if (prev.name !== "playlist-downloading") return prev
-          const nextItems = prev.items.slice()
-          const current = nextItems[index]
-          if (!current) return prev
-          nextItems[index] = {
-            ...current,
-            status: update.status,
-            progress: update.progress ?? current.progress,
-            filePath: update.result?.filePath ?? current.filePath,
-            fileSize: update.result?.fileSize ?? current.fileSize,
-            error: update.error ?? current.error,
-          }
-          return { ...prev, items: nextItems, activeIndex: index }
-        })
-      })
+      await downloadPlaylist(
+        playlist.entries,
+        format.args,
+        downloadDir,
+        (index, update) => {
+          setScreen((prev) => {
+            if (prev.name !== "playlist-downloading") return prev
+            const nextItems = prev.items.slice()
+            const current = nextItems[index]
+            if (!current) return prev
+            nextItems[index] = {
+              ...current,
+              status: update.status,
+              progress: update.progress ?? current.progress,
+              filePath: update.result?.filePath ?? current.filePath,
+              fileSize: update.result?.fileSize ?? current.fileSize,
+              error: update.error ?? current.error,
+            }
+            return { ...prev, items: nextItems, activeIndex: index }
+          })
+        },
+        config.cookiesFromBrowser,
+      )
 
       setScreen((prev) =>
         prev.name === "playlist-downloading"
