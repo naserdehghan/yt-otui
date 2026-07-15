@@ -1,4 +1,3 @@
-import { homedir } from "node:os"
 import { join } from "node:path"
 
 export interface RawFormat {
@@ -31,8 +30,6 @@ export interface DownloadResult {
   fileSize: number
 }
 
-const DOWNLOAD_DIR = join(homedir(), "Downloads")
-
 export function checkYtDlpInstalled(): boolean {
   return Bun.which("yt-dlp") !== null
 }
@@ -60,9 +57,10 @@ export async function fetchVideoInfo(url: string): Promise<VideoInfo> {
 export async function downloadVideo(
   url: string,
   formatArgs: string[],
+  downloadDir: string,
   onProgress: (progress: DownloadProgress) => void,
 ): Promise<DownloadResult> {
-  const outputTemplate = join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
+  const outputTemplate = join(downloadDir, "%(title)s.%(ext)s")
 
   const proc = Bun.spawn(
     [

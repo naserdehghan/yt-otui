@@ -21,8 +21,9 @@ The app opens to a URL input screen. Paste a YouTube URL, press Enter, select a 
 yt-otui/
 ├── src/
 │   ├── index.tsx              # Entrypoint: yt-dlp check, renderer init, render <App />
-│   ├── App.tsx                # Root component: state machine (5 screens)
-│   ├── ytdlp.ts               # yt-dlp wrapper: types, fetchVideoInfo, downloadVideo
+│   ├── App.tsx                # Root component: state machine (5 screens), config state, settings modal
+│   ├── config.ts              # AppConfig type, config persistence (~/.config/yt-otui/config.json), download dir resolution
+│   ├── ytdlp.ts               # yt-dlp wrapper: types, fetchVideoInfo, downloadVideo(url, args, downloadDir, onProgress)
 │   ├── formats.ts             # Format curation: raw yt-dlp formats → user-facing options
 │   ├── screens/
 │   │   ├── UrlScreen.tsx      # URL input with error display
@@ -31,7 +32,8 @@ yt-otui/
 │   │   ├── DownloadScreen.tsx # Progress bar + speed/ETA
 │   │   └── DoneScreen.tsx     # File path + size confirmation
 │   └── components/
-│       └── ProgressBar.tsx    # Reusable filled-bar component
+│       ├── ProgressBar.tsx    # Reusable filled-bar component
+│       └── SettingsModal.tsx  # Settings overlay: download directory mode selector
 ├── .github/workflows/
 │   └── openwiki-update.yml    # Scheduled OpenWiki doc regeneration
 ├── .agents/skills/opentui/    # OpenTUI agent skill (SKILL.md + reference docs)
@@ -79,7 +81,7 @@ All yt-dlp calls are made via `Bun.spawn` with stdout/stderr pipes:
 
 - **`checkYtDlpInstalled()`** — uses `Bun.which("yt-dlp")` to verify the CLI exists on PATH
 - **`fetchVideoInfo(url)`** — runs `yt-dlp -J --no-playlist <url>`, parses JSON output. Throws on non-zero exit with last 5 stderr lines
-- **`downloadVideo(url, formatArgs, onProgress)`** — runs yt-dlp with `--newline` + a custom `--progress-template`, parses `PROG|...` lines for real-time progress, detects final path from `[Merger]` / `[download] / [ExtractAudio]` output lines. Downloads to `~/Downloads/`
+- **`downloadVideo(url, formatArgs, downloadDir, onProgress)`** — runs yt-dlp with `--newline` + a custom `--progress-template`, parses `PROG|...` lines for real-time progress, detects final path from `[Merger]` / `[download] / [ExtractAudio]` output lines. The download directory is resolved from config via `resolveDownloadDir(config)` in `App.tsx`.
 
 ### Keyboard Navigation
 
@@ -90,6 +92,7 @@ All yt-dlp calls are made via `Bun.spawn` with stdout/stderr pipes:
 | Esc | Done screen | Quit |
 | q | Done screen | Quit |
 | n | Done screen | New download (reset to URL) |
+| Ctrl+Shift+/ | Any | Toggle settings modal (download directory) |
 | Enter | URL screen | Submit URL |
 | Enter | Format screen | Select highlighted format |
 
@@ -98,6 +101,7 @@ All yt-dlp calls are made via `Bun.spawn` with stdout/stderr pipes:
 - **yt-dlp not found:** The app exits immediately at startup with a message directing the user to install it (`brew install yt-dlp`).
 - **Invalid URL / fetch failure:** Error message displayed on the URL screen. The user can retry.
 - **Download failure:** Returns to URL screen with the error message. Check yt-dlp version (`yt-dlp --version`) and network connectivity.
+- **Config file:** Settings are persisted at `~/.config/yt-otui/config.json`. Delete this file to reset to defaults.
 - **Force quit:** If the app hangs, Ctrl+C kills it (handled by `createCliRenderer({ exitOnCtrlC: true })`).
 - **Typecheck:** Run `bun run typecheck` (which runs `tsc --noEmit`) to verify type correctness.
 
@@ -126,7 +130,7 @@ This project has no formal test suite. Practical verification approaches:
 
 - **Adding a screen:** Define the new shape in the `Screen` union type in `App.tsx`, add the component under `src/screens/`, and add a `case` in the switch statement.
 - **Modifying format options:** Edit `src/formats.ts` — update the `TIERS` array or add entries to the curated list.
-- **Changing download output:** Edit the `DOWNLOAD_DIR` constant and/or `outputTemplate` in `src/ytdlp.ts`.
+- **Changing download output:** Edit `src/config.ts` — the `resolveDownloadDir()` function and config schema define download modes. The settings modal (`src/components/SettingsModal.tsx`) lets users pick the mode at runtime.
 - **Keyboard shortcuts:** Edit the `useKeyboard` hook in `App.tsx`.
 - **OpenTUI version bumps:** Check `@opentui/core` and `@opentui/react` in `package.json`. The `tsconfig.json` JSX configuration is OpenTUI-specific.
 
@@ -136,6 +140,5 @@ These areas exist but are not yet covered in depth in these docs:
 
 | Area | Source anchor | Reason deferred |
 |---|---|---|
-| **Configurability** | Download directory hardcoded at `src/ytdlp.ts` line 34 | Not yet implemented. No settings UI or CLI flags exist. |
-| **Playlist support** | `--no-playlist` flag in `src/ytdlp.ts` lines 41, 71 | Explicitly disabled; playlist handling would require a significantly different flow. |
+| **Playlist support** | `--no-playlist` flag in `src/ytdlp.ts` lines 38, 69 | Explicitly disabled; playlist handling would require a significantly different flow. |
 | **Git history** | No `.git` directory in this checkout | No commit history to analyze. If git is initialized later, inspect the log for decisions around screen state machine design and yt-dlp argument handling. |

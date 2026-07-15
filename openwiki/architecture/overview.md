@@ -30,6 +30,8 @@ type Screen =
 
 Each `name` discriminant maps to a switch-case in the render function and to one screen component under `src/screens/`. Transitions are triggered by callbacks passed as props to each screen component.
 
+In addition to the screen state, `<App>` manages an `AppConfig` state (loaded from `~/.config/yt-otui/config.json`) and a `settingsOpen` boolean that controls the settings modal overlay.
+
 ## Component Tree
 
 ```
@@ -48,6 +50,8 @@ createRoot(renderer)
     │   └── <text> speed · ETA
     └── <DoneScreen>               [src/screens/DoneScreen.tsx]
         └── <box> "File" (path, size)
+    └── <SettingsModal>            [src/components/SettingsModal.tsx]
+        └── (overlay, shown on Ctrl+Shift+/)
 ```
 
 All screen components are direct children of `<App>` — there is no router or navigation stack. Only one screen is rendered at a time due to the switch-case in the render function.
@@ -71,7 +75,10 @@ User URL ──▶ UrlScreen ──▶ App.handleUrlSubmit()
                     FormatScreen ──▶ App.handleFormatSelect(url, info, format)
                                         │
                                         ▼
-                              ytdlp.downloadVideo(url, args, onProgress)
+                              config.resolveDownloadDir(config)
+                                        │
+                                        ▼
+                              ytdlp.downloadVideo(url, args, downloadDir, onProgress)
                                 spawn("yt-dlp", [...formatArgs])
                                 parse "PROG|..." lines from stdout
                                 callback: setScreen({ name: "downloading", progress })
@@ -91,6 +98,8 @@ The app does not use yt-dlp as a library — it spawns it as a subprocess via `B
 - Format data flows as JSON from stdout (`-J` flag).
 - Download progress is parsed from custom `--progress-template` lines prefixed with `PROG|`.
 - File paths are extracted from yt-dlp's own stdout messages (`[Merger]`, `[download] Destination:`, `[ExtractAudio] Destination:`).
+
+The download directory is no longer hardcoded: `downloadVideo()` accepts a `downloadDir` parameter, resolved by `resolveDownloadDir(config)` in `src/config.ts`. The user can choose between `~/Downloads`, the current working directory, or a custom path via the settings modal.
 
 **2. Format curation is separate from raw data** (`src/formats.ts`)
 Raw yt-dlp format lists can be 20–50 entries. The curation layer reduces this to a predictable set of options:
@@ -117,13 +126,14 @@ Keyboard handling is centralized in `App.tsx` via OpenTUI's `useKeyboard` hook:
 
 ```typescript
 useKeyboard((key) => {
+  if (key.ctrl && (key.name === "/" || key.name === "_")) { /* toggle settings */ }
   if (key.name === "escape") { /* screen-dependent action */ }
   if (key.name === "q" && screen.name === "done") process.exit(0)
   if (key.name === "n" && screen.name === "done") /* reset */ }
 })
 ```
 
-Focused inputs (`UrlScreen`'s `<input>`, `FormatScreen`'s `<select>`) receive key events first via OpenTUI's focus system. The global `useKeyboard` handler catches keys that the focused element does not consume.
+`Ctrl+Shift+/` (or `Ctrl+_` in terminals without the Kitty keyboard protocol) toggles the settings modal. When the modal is open, keyboard events are blocked from reaching the screen-level handlers. Focused inputs (`UrlScreen`'s `<input>`, `FormatScreen`'s `<select>`) receive key events first via OpenTUI's focus system.
 
 ## Error Handling Strategy
 
