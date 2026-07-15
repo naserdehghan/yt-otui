@@ -20,37 +20,52 @@ The app opens to a URL input screen. Paste a YouTube URL, press Enter, select a 
 ```
 yt-otui/
 ├── src/
-│   ├── index.tsx              # Entrypoint: yt-dlp check, renderer init, render <App />
-│   ├── App.tsx                # Root component: state machine (9 screen variants), config state, settings modal
-│   ├── config.ts              # AppConfig type, config persistence (~/.config/yt-otui/config.json), download dir resolution
-│   ├── ytdlp.ts               # yt-dlp wrapper: types, fetchInfo, downloadVideo, downloadPlaylist
-│   ├── formats.ts             # Format curation: raw yt-dlp formats → user-facing options
-│   ├── screens/
-│   │   ├── UrlScreen.tsx               # URL input with error display
-│   │   ├── LoadingScreen.tsx           # Spinner while fetching video info
-│   │   ├── FormatScreen.tsx            # Quality/format picker (select list)
-│   │   ├── DownloadScreen.tsx          # Progress bar + speed/ETA
-│   │   ├── DoneScreen.tsx              # File path + size confirmation
-│   │   ├── PlaylistChoiceScreen.tsx    # "Video or playlist?" decision (when URL has both v & list)
-│   │   ├── PlaylistFormatScreen.tsx    # Format picker that applies to all entries
-│   │   ├── PlaylistDownloadScreen.tsx  # Per-video progress with scrollable entry list
-│   │   └── PlaylistDoneScreen.tsx      # Summary: succeeded/failed per entry
-│   └── components/
-│       ├── ProgressBar.tsx    # Reusable filled-bar component
-│       └── SettingsModal.tsx  # Settings overlay: download directory mode selector
+│   ├── index.tsx                    # Entrypoint: yt-dlp check, renderer init, render <App />
+│   ├── app/
+│   │   ├── App.tsx                  # Root component: state machine, config, settings modal
+│   │   └── types.ts                 # Screen union type, PlaylistItemState (extracted from App)
+│   ├── features/                    # Feature-based screen modules
+│   │   ├── done/
+│   │   │   └── DoneScreen.tsx       # File path + size confirmation
+│   │   ├── download/
+│   │   │   ├── DownloadScreen.tsx   # Progress bar + speed/ETA
+│   │   │   └── ProgressBar.tsx      # Reusable filled-bar component
+│   │   ├── format/
+│   │   │   ├── FormatScreen.tsx     # Quality/format picker (select list)
+│   │   │   └── formats.ts          # Format curation: raw yt-dlp → user-facing options
+│   │   ├── loading/
+│   │   │   └── LoadingScreen.tsx    # Spinner while fetching video info
+│   │   ├── playlist/
+│   │   │   ├── PlaylistChoiceScreen.tsx      # "Video or playlist?" decision
+│   │   │   ├── PlaylistFormatScreen.tsx      # Format picker for all entries
+│   │   │   ├── PlaylistDownloadScreen.tsx    # Per-video progress with scrollable list
+│   │   │   ├── PlaylistDoneScreen.tsx        # Summary: succeeded/failed per entry
+│   │   │   └── types.ts                     # PlaylistItemState type
+│   │   ├── settings/
+│   │   │   ├── SettingsModal.tsx    # Settings overlay: download directory mode
+│   │   │   └── config.ts           # AppConfig type, persistence, download dir resolution
+│   │   └── url/
+│   │       └── UrlScreen.tsx        # URL input with error display
+│   └── shared/
+│       ├── services/
+│       │   └── ytdlp.ts            # yt-dlp wrapper: fetchInfo, downloadVideo, downloadPlaylist
+│       └── utils/
+│           └── formatBytes.ts      # File size formatting utility
+├── dist/
+│   └── index.js                     # Bundled output (bun run build)
 ├── .github/workflows/
-│   └── openwiki-update.yml    # Scheduled OpenWiki doc regeneration
-├── .agents/skills/opentui/    # OpenTUI agent skill (SKILL.md + reference docs)
-├── package.json               # Bun project config, entry: src/index.tsx
-├── tsconfig.json              # TypeScript + JSX config for OpenTUI React
-├── AGENTS.md                  # OpenWiki agent instructions
-├── CLAUDE.md                  # OpenWiki agent instructions (duplicate)
-├── skills-lock.json           # Lockfile for agent skills
+│   └── openwiki-update.yml          # Scheduled OpenWiki doc regeneration
+├── .agents/skills/opentui/          # OpenTUI agent skill (SKILL.md + reference docs)
+├── package.json                     # Bun project config, entry: src/index.tsx
+├── tsconfig.json                    # TypeScript + JSX config for OpenTUI React
+├── AGENTS.md                        # OpenWiki agent instructions
+├── CLAUDE.md                        # OpenWiki agent instructions (duplicate)
+├── skills-lock.json                 # Lockfile for agent skills
 └── openwiki/
-    ├── INSTRUCTIONS.md        # OpenWiki brief (user-authored)
-    ├── quickstart.md          # THIS FILE
+    ├── INSTRUCTIONS.md              # OpenWiki brief (user-authored)
+    ├── quickstart.md                # THIS FILE
     └── architecture/
-        └── overview.md        # Architecture deep-dive
+        └── overview.md              # Architecture deep-dive
 ```
 
 ## Key Concepts
@@ -146,8 +161,8 @@ This project has no formal test suite. Practical verification approaches:
 
 ## Change Guidance for Future Agents
 
-- **Adding a screen:** Define the new shape in the `Screen` union type in `App.tsx`, add the component under `src/screens/`, and add a `case` in the switch statement.
-- **Modifying format options:** Edit `src/formats.ts` — update the `TIERS` array or add entries to the curated list. For playlist downloads, `defaultFormatOptions()` returns all tiers without per-video filtering; single-video filtering stays in `curateFormats()`.
+- **Adding a screen:** Define the new shape in the `Screen` union type in `src/app/types.ts`, create a feature module under `src/features/<name>/` with a barrel `index.ts`, and add a `case` in the switch statement in `src/app/App.tsx`.
+- **Modifying format options:** Edit `src/features/format/formats.ts` — update the `TIERS` array or add entries to the curated list. For playlist downloads, `defaultFormatOptions()` returns all tiers without per-video filtering; single-video filtering stays in `curateFormats()`.
 - **Changing download output:** Edit `src/config.ts` — the `resolveDownloadDir()` function and config schema define download modes. The settings modal (`src/components/SettingsModal.tsx`) lets users pick the mode at runtime. Playlist downloads create a subfolder named after the playlist title under the configured directory.
 - **Keyboard shortcuts:** Edit the `useKeyboard` hook in `App.tsx`.
 - **Playlist behavior:** The URL router in `handleUrlSubmit` first calls `parseYouTubeUrl()` to detect playlist association, then `fetchInfo()` to decide if the response is a playlist. Adding support for other platforms' playlists would require updating `fetchInfo` (it already handles generic `entries` arrays) and the `parseYouTubeUrl` regex.
