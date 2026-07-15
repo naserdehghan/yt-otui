@@ -128,12 +128,14 @@ Keyboard handling is centralized in `App.tsx` via OpenTUI's `useKeyboard` hook:
 useKeyboard((key) => {
   if (key.ctrl && (key.name === "/" || key.name === "_")) { /* toggle settings */ }
   if (key.name === "escape") { /* screen-dependent action */ }
-  if (key.name === "q" && screen.name === "done") process.exit(0)
+  if (key.name === "q" && screen.name === "done") quit()
   if (key.name === "n" && screen.name === "done") /* reset */ }
 })
 ```
 
 `Ctrl+Shift+/` (or `Ctrl+_` in terminals without the Kitty keyboard protocol) toggles the settings modal. When the modal is open, keyboard events are blocked from reaching the screen-level handlers. Focused inputs (`UrlScreen`'s `<input>`, `FormatScreen`'s `<select>`) receive key events first via OpenTUI's focus system.
+
+The `quit()` function calls `renderer.destroy()` before `process.exit(0)` to properly restore terminal state and prevent rendering artifacts. This was introduced (commit `b7734f0`) after noticing that an unclean exit could leave the terminal in a broken state.
 
 ## Error Handling Strategy
 
