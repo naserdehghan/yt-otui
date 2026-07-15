@@ -21,16 +21,20 @@ The app opens to a URL input screen. Paste a YouTube URL, press Enter, select a 
 yt-otui/
 ├── src/
 │   ├── index.tsx              # Entrypoint: yt-dlp check, renderer init, render <App />
-│   ├── App.tsx                # Root component: state machine (5 screens), config state, settings modal
+│   ├── App.tsx                # Root component: state machine (9 screen variants), config state, settings modal
 │   ├── config.ts              # AppConfig type, config persistence (~/.config/yt-otui/config.json), download dir resolution
-│   ├── ytdlp.ts               # yt-dlp wrapper: types, fetchVideoInfo, downloadVideo(url, args, downloadDir, onProgress)
+│   ├── ytdlp.ts               # yt-dlp wrapper: types, fetchInfo, downloadVideo, downloadPlaylist
 │   ├── formats.ts             # Format curation: raw yt-dlp formats → user-facing options
 │   ├── screens/
-│   │   ├── UrlScreen.tsx      # URL input with error display
-│   │   ├── LoadingScreen.tsx  # Spinner while fetching video info
-│   │   ├── FormatScreen.tsx   # Quality/format picker (select list)
-│   │   ├── DownloadScreen.tsx # Progress bar + speed/ETA
-│   │   └── DoneScreen.tsx     # File path + size confirmation
+│   │   ├── UrlScreen.tsx               # URL input with error display
+│   │   ├── LoadingScreen.tsx           # Spinner while fetching video info
+│   │   ├── FormatScreen.tsx            # Quality/format picker (select list)
+│   │   ├── DownloadScreen.tsx          # Progress bar + speed/ETA
+│   │   ├── DoneScreen.tsx              # File path + size confirmation
+│   │   ├── PlaylistChoiceScreen.tsx    # "Video or playlist?" decision (when URL has both v & list)
+│   │   ├── PlaylistFormatScreen.tsx    # Format picker that applies to all entries
+│   │   ├── PlaylistDownloadScreen.tsx  # Per-video progress with scrollable entry list
+│   │   └── PlaylistDoneScreen.tsx      # Summary: succeeded/failed per entry
 │   └── components/
 │       ├── ProgressBar.tsx    # Reusable filled-bar component
 │       └── SettingsModal.tsx  # Settings overlay: download directory mode selector
@@ -53,15 +57,26 @@ yt-otui/
 
 ### Screen State Machine
 
-The app is a linear state machine with five screens:
+The app has two parallel flows: a **single-video path** (5 screens) and a **playlist path** (4 screens). The router in `App.tsx` selects the path at URL-submit time based on the parsed URL.
 
 ```
-URL → Loading → Format Selection → Downloading → Done
- │                                                  │
- └── (error/back) ←─────────────────────────────────┘
+Single video (default):
+URL ──▶ Loading ──▶ Format Selection ──▶ Downloading ──▶ Done
+ │                                                       │
+ └──────────────── (error/back) ◀───────────────────────┘
+
+Playlist:
+URL ──▶ Playlist Choice ──▶ Playlist Format ──▶ Playlist Downloading ──▶ Playlist Done
+ │          │      │                                                    │
+ │          │ video│                                                    │
+ │          ▼      ▼                                                    │
+ │      Single-video path                                              │
+ └──(detected automatically)────────────────────────────────────────────┘
 ```
 
-State is modeled as a discriminated union (`Screen` type) in `App.tsx`. Each screen maps to one React component. The URL and Format screens can return to earlier states on error or user action.
+When a URL contains both a `videoId` and `listId` (e.g. `youtube.com/watch?v=...&list=...`), the **Playlist Choice** screen asks whether to download just that one video or the full playlist. URLs that resolve entirely to a playlist (no single-video fallback, e.g. `youtube.com/playlist?list=...`) skip directly to playlist format selection.
+
+State is modeled as a discriminated union (`Screen` type) in `App.tsx`. Each screen maps to one React component. The URL, Playlist Choice, and Format screens can return to earlier states on error or user action.
 
 ### Format Curation (`formats.ts`)
 
@@ -80,21 +95,24 @@ Tiers are tried in descending order: 2160, 1440, 1080, 720, 480, 360. Tiers abov
 All yt-dlp calls are made via `Bun.spawn` with stdout/stderr pipes:
 
 - **`checkYtDlpInstalled()`** — uses `Bun.which("yt-dlp")` to verify the CLI exists on PATH
-- **`fetchVideoInfo(url)`** — runs `yt-dlp -J --no-playlist <url>`, parses JSON output. Throws on non-zero exit with last 5 stderr lines
-- **`downloadVideo(url, formatArgs, downloadDir, onProgress)`** — runs yt-dlp with `--newline` + a custom `--progress-template`, parses `PROG|...` lines for real-time progress, detects final path from `[Merger]` / `[download] / [ExtractAudio]` output lines. The download directory is resolved from config via `resolveDownloadDir(config)` in `App.tsx`.
+- **`fetchInfo(url, opts?)`** — runs `yt-dlp -J --flat-playlist <url>` (with `--no-playlist` when `opts.noPlaylist` is true), parses JSON output. Returns `VideoInfo` for single videos or `PlaylistInfo` (with `entries[]`) when the JSON includes an `entries` array. Throws on non-zero exit with last 5 stderr lines.
+- **`parseYouTubeUrl(url)`** — extracts `videoId` and `listId` from a YouTube URL to detect playlist association before fetching.
+- **`downloadVideo(url, formatArgs, downloadDir, onProgress)`** — runs yt-dlp with `--newline` + a custom `--progress-template`, parses `PROG|...` lines for real-time progress, detects final path from `[Merger]` / `[download] / `[ExtractAudio]` output lines. The download directory is resolved from config via `resolveDownloadDir(config)` in `App.tsx`.
+- **`downloadPlaylist(entries, formatArgs, downloadDir, onItemUpdate)`** — iterates playlist entries, calling `downloadVideo` for each and reporting per-item status (downloading/done/error) via the callback. All entries share the same format args and download directory.
 
 ### Keyboard Navigation
 
 | Key | Context | Action |
 |---|---|---|
 | Esc | URL screen | Quit |
-| Esc | Format screen | Back to URL |
-| Esc | Done screen | Quit |
-| q | Done screen | Quit |
-| n | Done screen | New download (reset to URL) |
+| Esc | Format / Playlist Choice / Playlist Format screen | Back to URL |
+| Esc | Done / Playlist Done screen | Quit |
+| q | Done / Playlist Done screen | Quit |
+| n | Done / Playlist Done screen | New download (reset to URL) |
 | Ctrl+Shift+/ | Any | Toggle settings modal (download directory) |
 | Enter | URL screen | Submit URL |
-| Enter | Format screen | Select highlighted format |
+| Enter | Format / Playlist Format screen | Select highlighted format |
+| Enter | Playlist Choice screen | Confirm choice (video or playlist) |
 
 ## Operations / Runbook
 
@@ -129,9 +147,10 @@ This project has no formal test suite. Practical verification approaches:
 ## Change Guidance for Future Agents
 
 - **Adding a screen:** Define the new shape in the `Screen` union type in `App.tsx`, add the component under `src/screens/`, and add a `case` in the switch statement.
-- **Modifying format options:** Edit `src/formats.ts` — update the `TIERS` array or add entries to the curated list.
-- **Changing download output:** Edit `src/config.ts` — the `resolveDownloadDir()` function and config schema define download modes. The settings modal (`src/components/SettingsModal.tsx`) lets users pick the mode at runtime.
+- **Modifying format options:** Edit `src/formats.ts` — update the `TIERS` array or add entries to the curated list. For playlist downloads, `defaultFormatOptions()` returns all tiers without per-video filtering; single-video filtering stays in `curateFormats()`.
+- **Changing download output:** Edit `src/config.ts` — the `resolveDownloadDir()` function and config schema define download modes. The settings modal (`src/components/SettingsModal.tsx`) lets users pick the mode at runtime. Playlist downloads create a subfolder named after the playlist title under the configured directory.
 - **Keyboard shortcuts:** Edit the `useKeyboard` hook in `App.tsx`.
+- **Playlist behavior:** The URL router in `handleUrlSubmit` first calls `parseYouTubeUrl()` to detect playlist association, then `fetchInfo()` to decide if the response is a playlist. Adding support for other platforms' playlists would require updating `fetchInfo` (it already handles generic `entries` arrays) and the `parseYouTubeUrl` regex.
 - **OpenTUI version bumps:** Check `@opentui/core` and `@opentui/react` in `package.json`. The `tsconfig.json` JSX configuration is OpenTUI-specific.
 
 ## Backlog
@@ -140,5 +159,4 @@ These areas exist but are not yet covered in depth in these docs:
 
 | Area | Source anchor | Reason deferred |
 |---|---|---|
-| **Playlist support** | `--no-playlist` flag in `src/ytdlp.ts` lines 38, 69 | Explicitly disabled; playlist handling would require a significantly different flow. |
 | **Git history** | No `.git` directory in this checkout | No commit history to analyze. If git is initialized later, inspect the log for decisions around screen state machine design and yt-dlp argument handling. |

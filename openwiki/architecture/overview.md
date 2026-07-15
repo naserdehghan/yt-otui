@@ -4,7 +4,10 @@ yt-otui is a single-page React TUI application rendered by OpenTUI. The architec
 
 ## State Machine
 
+The screen routing has two parallel flows selected at URL-submit time:
+
 ```
+Single-video path (default):
                     ┌──────────────────────────────────────────────┐
                     │                                              │
                     ▼                                              │
@@ -15,17 +18,54 @@ yt-otui is a single-page React TUI application rendered by OpenTUI. The architec
       ▲                                                    │
       │                                                    │
       └────────────────── (error/back) ◀───────────────────┘
+
+Playlist path (URL with `list` param or resolves to entries):
+                                      ┌──────────────────┐
+                                      │ Playlist Choice  │── video ──▶ (single-video path)
+                                      │     Screen       │
+                                      └──────────────────┘
+                                             │ playlist
+                                             ▼
+                              ┌──────────────────────┐
+                              │   Playlist Format    │
+                              │       Screen         │
+                              └──────────────────────┘
+                                             │
+                                             ▼
+                              ┌──────────────────────┐
+                              │ Playlist Downloading │
+                              │       Screen         │
+                              └──────────────────────┘
+                                             │
+                                             ▼
+                              ┌──────────────────────┐
+                              │   Playlist Done      │
+                              │       Screen         │
+                              └──────────────────────┘
 ```
 
-The `Screen` type in `App.tsx` is a **discriminated union**:
+The `Screen` type in `App.tsx` is a **discriminated union** with 9 variants:
 
 ```typescript
+type PlaylistItemState = {
+  title: string
+  status: "pending" | "downloading" | "done" | "error"
+  progress?: DownloadProgress
+  filePath?: string
+  fileSize?: number
+  error?: string
+}
+
 type Screen =
   | { name: "url"; error: string | null }
   | { name: "loading"; message: string }
+  | { name: "playlist-choice"; url: string }
   | { name: "formats"; url: string; info: VideoInfo; formats: FormatOption[] }
+  | { name: "playlist-formats"; playlist: PlaylistInfo; formats: FormatOption[] }
   | { name: "downloading"; title: string; progress: DownloadProgress }
   | { name: "done"; filePath: string; fileSize: number }
+  | { name: "playlist-downloading"; playlistTitle: string; entries: PlaylistEntry[]; items: PlaylistItemState[]; activeIndex: number }
+  | { name: "playlist-done"; playlistTitle: string; items: PlaylistItemState[] }
 ```
 
 Each `name` discriminant maps to a switch-case in the render function and to one screen component under `src/screens/`. Transitions are triggered by callbacks passed as props to each screen component.
@@ -48,8 +88,20 @@ createRoot(renderer)
     │   ├── <text> title
     │   ├── <ProgressBar>          [src/components/ProgressBar.tsx]
     │   └── <text> speed · ETA
-    └── <DoneScreen>               [src/screens/DoneScreen.tsx]
-        └── <box> "File" (path, size)
+    ├── <DoneScreen>               [src/screens/DoneScreen.tsx]
+    │   └── <box> "File" (path, size)
+    ├── <PlaylistChoiceScreen>     [src/screens/PlaylistChoiceScreen.tsx]
+    │   └── <select> (video or playlist)
+    ├── <PlaylistFormatScreen>     [src/screens/PlaylistFormatScreen.tsx]
+    │   ├── <box> "Playlist" (title, video count)
+    │   └── <select> (format options applied to all entries)
+    ├── <PlaylistDownloadScreen>   [src/screens/PlaylistDownloadScreen.tsx]
+    │   ├── <text> playlist title
+    │   ├── <box> "Videos" (scrollable entry list with status icons)
+    │   ├── <ProgressBar>          [src/components/ProgressBar.tsx]
+    │   └── <text> speed · ETA (active entry)
+    ├── <PlaylistDoneScreen>       [src/screens/PlaylistDoneScreen.tsx]
+    │   └── <box> "Results" (succeeded/failed per entry)
     └── <SettingsModal>            [src/components/SettingsModal.tsx]
         └── (overlay, shown on Ctrl+Shift+/)
 ```
@@ -61,33 +113,65 @@ All screen components are direct children of `<App>` — there is no router or n
 ```
 User URL ──▶ UrlScreen ──▶ App.handleUrlSubmit()
                               │
-                              ▼
-                    ytdlp.fetchVideoInfo(url)
-                       spawn("yt-dlp", ["-J", "--no-playlist", url])
-                       stdout → JSON.parse → VideoInfo
-                              │
-                              ▼
-                    formats.curateFormats(info)
-                       filter by vcodec, height
-                       map to quality tiers (2160p → 360p + audio)
-                              │
-                              ▼
-                    FormatScreen ──▶ App.handleFormatSelect(url, info, format)
-                                        │
-                                        ▼
-                              config.resolveDownloadDir(config)
-                                        │
-                                        ▼
-                              ytdlp.downloadVideo(url, args, downloadDir, onProgress)
-                                spawn("yt-dlp", [...formatArgs])
-                                parse "PROG|..." lines from stdout
-                                callback: setScreen({ name: "downloading", progress })
-                                        │
-                                        ▼
-                              ytdlp returns { filePath, fileSize }
-                                        │
-                                        ▼
-                              DoneScreen
+                    ┌─────────┴──────────┐
+                    ▼                    ▼
+          parseYouTubeUrl(url)    fetchInfo(url)
+          ├─ videoId + listId?       ├─ "entries" in result? ──▶ PlaylistInfo path
+          │  ──▶ PlaylistChoice      └─ single video ──▶ VideoInfo path
+          │      Screen
+          │      ├─ "video"
+          │      └─ "playlist"
+          ▼
+    fetchInfo(url, { noPlaylist: true })
+       spawn("yt-dlp", ["-J", "--flat-playlist", "--no-playlist", url])
+       stdout → JSON.parse → VideoInfo
+              │
+              ▼
+    formats.curateFormats(info)
+       filter by vcodec, height
+       map to quality tiers (2160p → 360p + audio)
+              │
+              ▼
+    FormatScreen ──▶ App.handleFormatSelect(url, info, format)
+                        │
+                        ▼
+              config.resolveDownloadDir(config)
+                        │
+                        ▼
+              ytdlp.downloadVideo(url, args, downloadDir, onProgress)
+                spawn("yt-dlp", [...formatArgs, "--no-playlist", ...])
+                parse "PROG|..." lines from stdout
+                callback: setScreen({ name: "downloading", progress })
+                        │
+                        ▼
+              ytdlp returns { filePath, fileSize }
+                        │
+                        ▼
+              DoneScreen
+
+Playlist path (--- or from PlaylistChoice "playlist" ──▶)
+
+    fetchInfo(url)
+       spawn("yt-dlp", ["-J", "--flat-playlist", url])
+       stdout → JSON.parse → PlaylistInfo (entries[])
+              │
+              ▼
+    PlaylistFormatScreen ──▶ handlePlaylistFormatSelect(playlist, format)
+                                │
+                                ▼
+                      config.resolveDownloadDir(config)
+                                │
+                                ▼
+                      join(baseDir, sanitizeFilename(playlist.title))
+                                │
+                                ▼
+                      ytdlp.downloadPlaylist(entries, args, dir, onItemUpdate)
+                        for each entry:
+                          downloadVideo(entry.url, args, dir, onProgress)
+                          callback: setScreen({ items[nextIndex] })
+                                │
+                                ▼
+                      PlaylistDoneScreen
 ```
 
 ### Key Design Decisions
@@ -95,9 +179,10 @@ User URL ──▶ UrlScreen ──▶ App.handleUrlSubmit()
 **1. Subprocess-based yt-dlp integration** (`src/ytdlp.ts`)
 The app does not use yt-dlp as a library — it spawns it as a subprocess via `Bun.spawn()`. This means:
 - The yt-dlp binary must be pre-installed (checked at startup).
-- Format data flows as JSON from stdout (`-J` flag).
+- Format data flows as JSON from stdout (`-J` flag). The `fetchInfo()` function is unified for both single videos and playlists: it passes `--flat-playlist` by default and inspects the JSON for an `entries` array. Single-video fetches use `{ noPlaylist: true }` to add `--no-playlist`.
 - Download progress is parsed from custom `--progress-template` lines prefixed with `PROG|`.
 - File paths are extracted from yt-dlp's own stdout messages (`[Merger]`, `[download] Destination:`, `[ExtractAudio] Destination:`).
+- Playlist downloads iterate sequentially: `downloadPlaylist()` calls `downloadVideo()` for each entry, reporting per-item status via callback. Each entry is a full subprocess invocation, so playlist downloads of N videos spawn N yt-dlp processes.
 
 The download directory is no longer hardcoded: `downloadVideo()` accepts a `downloadDir` parameter, resolved by `resolveDownloadDir(config)` in `src/config.ts`. The user can choose between `~/Downloads`, the current working directory, or a custom path via the settings modal.
 
@@ -107,6 +192,8 @@ Raw yt-dlp format lists can be 20–50 entries. The curation layer reduces this 
 - One entry per available quality tier up to the source's max height.
 - One "Audio only" entry.
 This separation makes the format selection UI stable and independent of yt-dlp's format output structure.
+
+For playlists, `defaultFormatOptions()` returns the same tier list without per-video height filtering (playlist entries fetched via `--flat-playlist` don't carry individual format lists). The format choice applies uniformly to all videos in the playlist.
 
 **3. OpenTUI with React bindings**
 The app uses `@opentui/react`, which provides standard React JSX and hooks (`useState`, `useCallback`, `useKeyboard`). The JSX transform is configured in `tsconfig.json` with `"jsx": "react-jsx"` and `"jsxImportSource": "@opentui/react"`.
@@ -127,9 +214,11 @@ Keyboard handling is centralized in `App.tsx` via OpenTUI's `useKeyboard` hook:
 ```typescript
 useKeyboard((key) => {
   if (key.ctrl && (key.name === "/" || key.name === "_")) { /* toggle settings */ }
-  if (key.name === "escape") { /* screen-dependent action */ }
-  if (key.name === "q" && screen.name === "done") quit()
-  if (key.name === "n" && screen.name === "done") /* reset */ }
+  if (key.name === "escape") {
+    /* url/playlist-choice/playlist-formats → back, done/playlist-done → quit */
+  }
+  if (key.name === "q" && (screen.name === "done" || screen.name === "playlist-done")) quit()
+  if (key.name === "n" && (screen.name === "done" || screen.name === "playlist-done")) /* reset */
 })
 ```
 
