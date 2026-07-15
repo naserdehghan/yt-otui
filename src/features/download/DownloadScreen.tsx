@@ -1,5 +1,5 @@
-import { ProgressBar } from "../components/ProgressBar"
-import type { DownloadProgress } from "../ytdlp"
+import type { DownloadProgress } from "../../shared/services/ytdlp"
+import { ProgressBar } from "./ProgressBar"
 
 interface DownloadScreenProps {
   title: string
@@ -7,7 +7,7 @@ interface DownloadScreenProps {
 }
 
 export function DownloadScreen({ title, progress }: DownloadScreenProps) {
-  const percent = parseFloat(progress.percent.replace("%", "").trim()) || 0
+  const percent = Number.parseFloat(progress.percent.replace("%", "").trim()) || 0
 
   return (
     <box

@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useKeyboard } from "@opentui/react"
-import type { AppConfig, DownloadDirMode } from "../config"
-import { resolveDownloadDir } from "../config"
+import type { AppConfig, DownloadDirMode } from "./config"
+import { resolveDownloadDir } from "./config"
 
 interface SettingsModalProps {
   config: AppConfig

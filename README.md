@@ -20,7 +20,7 @@ bun start
 
 ## Quality tiers
 
-Format lists from `yt-dlp` are curated into a fixed set of options (`src/formats.ts`), skipping tiers above the source video's max resolution:
+Format lists from `yt-dlp` are curated into a fixed set of options (`src/features/format/formats.ts`), skipping tiers above the source video's max resolution:
 
 | Option | What it does |
 | --- | --- |
@@ -52,8 +52,8 @@ The choice persists to `~/.config/yt-otui/config.json`; delete that file to rese
 
 ## Under the hood
 
-- Every `yt-dlp` call runs via `Bun.spawn` (`src/ytdlp.ts`) — `-J` for metadata, a `--progress-template` piped line-by-line for live speed/ETA during download.
-- The UI is a screen state machine (`src/App.tsx`): URL → Loading → Format → Downloading → Done for single videos, with a parallel Playlist Choice → Playlist Format → Playlist Downloading → Playlist Done path for playlist URLs, and error/Esc paths back to URL.
+- Every `yt-dlp` call runs via `Bun.spawn` (`src/shared/services/ytdlp.ts`) — `-J` for metadata, a `--progress-template` piped line-by-line for live speed/ETA during download.
+- The UI is a screen state machine (`src/app/App.tsx`): URL → Loading → Format → Downloading → Done for single videos, with a parallel Playlist Choice → Playlist Format → Playlist Downloading → Playlist Done path for playlist URLs, and error/Esc paths back to URL.
 - Rendered entirely with OpenTUI's React bindings — no browser, no Electron.
 
 See [`openwiki/architecture/overview.md`](./openwiki/architecture/overview.md) for the full component and data-flow breakdown.

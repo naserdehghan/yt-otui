@@ -1,4 +1,4 @@
-import type { RawFormat, VideoInfo } from "./ytdlp"
+import type { RawFormat, VideoInfo } from "../../shared/services/ytdlp"
 
 export interface FormatOption {
   label: string

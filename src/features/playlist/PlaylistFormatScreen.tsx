@@ -1,5 +1,5 @@
-import type { FormatOption } from "../formats"
-import type { PlaylistInfo } from "../ytdlp"
+import type { PlaylistInfo } from "../../shared/services/ytdlp"
+import type { FormatOption } from "../format/formats"
 
 interface PlaylistFormatScreenProps {
   playlist: PlaylistInfo

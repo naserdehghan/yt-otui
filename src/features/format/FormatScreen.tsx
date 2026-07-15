@@ -1,5 +1,5 @@
-import type { FormatOption } from "../formats"
-import type { VideoInfo } from "../ytdlp"
+import type { VideoInfo } from "../../shared/services/ytdlp"
+import type { FormatOption } from "./formats"
 
 interface FormatScreenProps {
   info: VideoInfo

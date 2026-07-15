@@ -1,7 +1,7 @@
 import { createCliRenderer } from "@opentui/core"
 import { createRoot } from "@opentui/react"
-import { checkYtDlpInstalled } from "./ytdlp"
-import { App } from "./App"
+import { checkYtDlpInstalled } from "./shared/services/ytdlp"
+import { App } from "./app/App"
 
 if (!checkYtDlpInstalled()) {
   console.error("yt-dlp not found on PATH.")

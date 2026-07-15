@@ -1,5 +1,5 @@
-import { ProgressBar } from "../components/ProgressBar"
-import type { PlaylistItemState } from "../App"
+import { ProgressBar } from "../download"
+import type { PlaylistItemState } from "./types"
 
 interface PlaylistDownloadScreenProps {
   playlistTitle: string
@@ -27,7 +27,7 @@ export function PlaylistDownloadScreen({ playlistTitle, items, activeIndex }: Pl
   const doneCount = items.filter((i) => i.status === "done" || i.status === "error").length
   const active = items[activeIndex]
   const percent = active?.progress
-    ? parseFloat(active.progress.percent.replace("%", "").trim()) || 0
+    ? Number.parseFloat(active.progress.percent.replace("%", "").trim()) || 0
     : 0
 
   const windowStart = Math.max(

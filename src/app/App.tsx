@@ -1,49 +1,30 @@
 import { useCallback, useState } from "react"
 import { useKeyboard, useRenderer } from "@opentui/react"
 import { join } from "node:path"
-import { UrlScreen } from "./screens/UrlScreen"
-import { LoadingScreen } from "./screens/LoadingScreen"
-import { FormatScreen } from "./screens/FormatScreen"
-import { DownloadScreen } from "./screens/DownloadScreen"
-import { DoneScreen } from "./screens/DoneScreen"
-import { PlaylistChoiceScreen } from "./screens/PlaylistChoiceScreen"
-import { PlaylistFormatScreen } from "./screens/PlaylistFormatScreen"
-import { PlaylistDownloadScreen } from "./screens/PlaylistDownloadScreen"
-import { PlaylistDoneScreen } from "./screens/PlaylistDoneScreen"
-import { SettingsModal } from "./components/SettingsModal"
-import { curateFormats, defaultFormatOptions, type FormatOption } from "./formats"
+import { UrlScreen } from "../features/url"
+import { LoadingScreen } from "../features/loading"
+import { FormatScreen, curateFormats, defaultFormatOptions, type FormatOption } from "../features/format"
+import { DownloadScreen } from "../features/download"
+import { DoneScreen } from "../features/done"
+import {
+  PlaylistChoiceScreen,
+  PlaylistDoneScreen,
+  PlaylistDownloadScreen,
+  PlaylistFormatScreen,
+  type PlaylistItemState,
+} from "../features/playlist"
+import { SettingsModal, loadConfig, resolveDownloadDir, saveConfig, type AppConfig } from "../features/settings"
 import {
   downloadPlaylist,
   downloadVideo,
   fetchInfo,
   parseYouTubeUrl,
   sanitizeFilename,
-  type DownloadProgress,
   type PlaylistEntry,
   type PlaylistInfo,
   type VideoInfo,
-} from "./ytdlp"
-import { loadConfig, resolveDownloadDir, saveConfig, type AppConfig } from "./config"
-
-export interface PlaylistItemState {
-  title: string
-  status: "pending" | "downloading" | "done" | "error"
-  progress?: DownloadProgress
-  filePath?: string
-  fileSize?: number
-  error?: string
-}
-
-type Screen =
-  | { name: "url"; error: string | null }
-  | { name: "loading"; message: string }
-  | { name: "playlist-choice"; url: string }
-  | { name: "formats"; url: string; info: VideoInfo; formats: FormatOption[] }
-  | { name: "playlist-formats"; playlist: PlaylistInfo; formats: FormatOption[] }
-  | { name: "downloading"; title: string; progress: DownloadProgress }
-  | { name: "done"; filePath: string; fileSize: number }
-  | { name: "playlist-downloading"; playlistTitle: string; entries: PlaylistEntry[]; items: PlaylistItemState[]; activeIndex: number }
-  | { name: "playlist-done"; playlistTitle: string; items: PlaylistItemState[] }
+} from "../shared/services/ytdlp"
+import type { Screen } from "./types"
 
 export function App() {
   const renderer = useRenderer()

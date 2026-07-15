@@ -1,4 +1,5 @@
-import type { PlaylistItemState } from "../App"
+import { formatBytes } from "../../shared/utils/formatBytes"
+import type { PlaylistItemState } from "./types"
 
 interface PlaylistDoneScreenProps {
   playlistTitle: string
@@ -6,12 +7,6 @@ interface PlaylistDoneScreenProps {
 }
 
 const MAX_VISIBLE_ITEMS = 8
-
-function formatBytes(bytes: number): string {
-  const mb = bytes / (1024 * 1024)
-  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`
-  return `${mb.toFixed(1)} MB`
-}
 
 export function PlaylistDoneScreen({ playlistTitle, items }: PlaylistDoneScreenProps) {
   const succeeded = items.filter((i) => i.status === "done").length

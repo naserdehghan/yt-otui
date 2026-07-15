@@ -1,12 +1,8 @@
+import { formatBytes } from "../../shared/utils/formatBytes"
+
 interface DoneScreenProps {
   filePath: string
   fileSize: number
-}
-
-function formatBytes(bytes: number): string {
-  const mb = bytes / (1024 * 1024)
-  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`
-  return `${mb.toFixed(1)} MB`
 }
 
 export function DoneScreen({ filePath, fileSize }: DoneScreenProps) {
