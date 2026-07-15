@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react"
-import { useKeyboard } from "@opentui/react"
+import { useKeyboard, useRenderer } from "@opentui/react"
 import { UrlScreen } from "./screens/UrlScreen"
 import { LoadingScreen } from "./screens/LoadingScreen"
 import { FormatScreen } from "./screens/FormatScreen"
@@ -18,9 +18,15 @@ type Screen =
   | { name: "done"; filePath: string; fileSize: number }
 
 export function App() {
+  const renderer = useRenderer()
   const [screen, setScreen] = useState<Screen>({ name: "url", error: null })
   const [config, setConfig] = useState<AppConfig>(() => loadConfig())
   const [settingsOpen, setSettingsOpen] = useState(false)
+
+  const quit = useCallback(() => {
+    renderer.destroy()
+    process.exit(0)
+  }, [renderer])
 
   const handleUrlSubmit = useCallback(async (url: string) => {
     setScreen({ name: "loading", message: "Fetching video info..." })
@@ -73,11 +79,11 @@ export function App() {
     }
     if (settingsOpen) return
     if (key.name === "escape") {
-      if (screen.name === "url") process.exit(0)
+      if (screen.name === "url") quit()
       if (screen.name === "formats") setScreen({ name: "url", error: null })
-      if (screen.name === "done") process.exit(0)
+      if (screen.name === "done") quit()
     }
-    if (key.name === "q" && screen.name === "done") process.exit(0)
+    if (key.name === "q" && screen.name === "done") quit()
     if (key.name === "n" && screen.name === "done") setScreen({ name: "url", error: null })
   })
 
