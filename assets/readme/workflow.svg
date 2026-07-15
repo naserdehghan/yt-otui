@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="400" viewBox="0 0 1200 400"
+     role="img" aria-labelledby="wf-title wf-desc">
+  <title id="wf-title">yt-otui screen flow</title>
+  <desc id="wf-desc">Five terminal screens in sequence: URL entry, loading, format selection, downloading, and done, with an escape path back to URL entry.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5f5f63"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#FF0000"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="400" rx="20" fill="#0a0a0c"/>
+  <rect x="1" y="1" width="1198" height="398" rx="19" fill="none" stroke="#1c1c1f" stroke-width="1"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <text x="64" y="40" font-size="18" font-weight="700" fill="#f0f0f0">How it flows</text>
+    <text x="1136" y="40" font-size="12" fill="#6a6a6e" text-anchor="end">one keyboard, five screens</text>
+
+    <!-- connecting arrows -->
+    <line x1="261" y1="140" x2="286" y2="140" stroke="#5f5f63" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="478" y1="140" x2="503" y2="140" stroke="#5f5f63" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="695" y1="140" x2="720" y2="140" stroke="#5f5f63" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="912" y1="140" x2="937" y2="140" stroke="#5f5f63" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- return path: done -> url -->
+    <path d="M 1034 210 C 1034 306, 166 306, 166 210" fill="none" stroke="#7a2222" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-red)"/>
+    <text x="600" y="330" font-size="12" fill="#8a4a4a" text-anchor="middle">esc / error &#8594; back to URL</text>
+
+    <!-- stage labels -->
+    <text x="166" y="232" font-size="12" letter-spacing="1.5" fill="#8a8a8e" text-anchor="middle">URL</text>
+    <text x="383" y="232" font-size="12" letter-spacing="1.5" fill="#8a8a8e" text-anchor="middle">LOADING</text>
+    <text x="600" y="232" font-size="12" letter-spacing="1.5" fill="#8a8a8e" text-anchor="middle">FORMAT</text>
+    <text x="817" y="232" font-size="12" letter-spacing="1.5" fill="#8a8a8e" text-anchor="middle">DOWNLOADING</text>
+    <text x="1034" y="232" font-size="12" letter-spacing="1.5" fill="#8a8a8e" text-anchor="middle">DONE</text>
+
+    <!-- Node 1: URL -->
+    <g transform="translate(71 70)">
+      <rect width="190" height="140" rx="6" fill="#08080a" stroke="#2c2c30"/>
+      <rect width="190" height="16" rx="6" fill="#161618"/>
+      <circle cx="12" cy="8" r="2.5" fill="#3a3a3e"/>
+      <circle cx="22" cy="8" r="2.5" fill="#3a3a3e"/>
+      <circle cx="32" cy="8" r="2.5" fill="#3a3a3e"/>
+      <rect x="14" y="58" width="162" height="22" rx="2" fill="none" stroke="#333338"/>
+      <text x="22" y="73" font-size="12" fill="#FF0000">&gt;</text>
+      <text x="34" y="73" font-size="11" fill="#6a6a6e">youtu.be/&#8230;</text>
+      <text x="14" y="104" font-size="10" fill="#6a6a6e">Enter to fetch info</text>
+    </g>
+
+    <!-- Node 2: Loading -->
+    <g transform="translate(288 70)">
+      <rect width="190" height="140" rx="6" fill="#08080a" stroke="#2c2c30"/>
+      <rect width="190" height="16" rx="6" fill="#161618"/>
+      <circle cx="12" cy="8" r="2.5" fill="#3a3a3e"/>
+      <circle cx="22" cy="8" r="2.5" fill="#3a3a3e"/>
+      <circle cx="32" cy="8" r="2.5" fill="#3a3a3e"/>
+      <circle cx="95" cy="66" r="12" fill="none" stroke="#7a7a7e" stroke-width="2" stroke-dasharray="16 40" stroke-linecap="round"/>
+      <text x="95" y="102" font-size="11" fill="#c8c8cc" text-anchor="middle">Fetching info&#8230;</text>
+    </g>
+
+    <!-- Node 3: Format -->
+    <g transform="translate(505 70)">
+      <rect width="190" height="140" rx="6" fill="#08080a" stroke="#2c2c30"/>
+      <rect width="190" height="16" rx="6" fill="#161618"/>
+      <circle cx="12" cy="8" r="2.5" fill="#3a3a3e"/>
+      <circle cx="22" cy="8" r="2.5" fill="#3a3a3e"/>
+      <circle cx="32" cy="8" r="2.5" fill="#3a3a3e"/>
+      <rect x="14" y="30" width="162" height="24" fill="#1a1a1d"/>
+      <rect x="14" y="30" width="3" height="24" fill="#FF0000"/>
+      <text x="24" y="46" font-size="11" fill="#f4f4f4">Best available</text>
+      <text x="14" y="70" font-size="11" fill="#c8c8cc">1080p MP4</text>
+      <text x="14" y="90" font-size="11" fill="#c8c8cc">720p MP4</text>
+      <text x="14" y="110" font-size="11" fill="#8a8a8e">Audio only (M4A)</text>
+    </g>
+
+    <!-- Node 4: Downloading -->
+    <g transform="translate(722 70)">
+      <rect width="190" height="140" rx="6" fill="#08080a" stroke="#2c2c30"/>
+      <rect width="190" height="16" rx="6" fill="#161618"/>
+      <circle cx="12" cy="8" r="2.5" fill="#3a3a3e"/>
+      <circle cx="22" cy="8" r="2.5" fill="#3a3a3e"/>
+      <circle cx="32" cy="8" r="2.5" fill="#3a3a3e"/>
+      <text x="14" y="56" font-size="11" fill="#c8c8cc">Downloading&#8230;</text>
+      <rect x="14" y="70" width="162" height="10" rx="1" fill="#232326"/>
+      <rect x="14" y="70" width="102" height="10" rx="1" fill="#f4f4f4"/>
+      <text x="14" y="98" font-size="11" fill="#f4f4f4">62%</text>
+      <text x="14" y="118" font-size="11" fill="#8a8a8e">3.4 MB/s &#183; ETA 0:08</text>
+    </g>
+
+    <!-- Node 5: Done -->
+    <g transform="translate(939 70)">
+      <rect width="190" height="140" rx="6" fill="#08080a" stroke="#2c2c30"/>
+      <rect width="190" height="16" rx="6" fill="#161618"/>
+      <circle cx="12" cy="8" r="2.5" fill="#3a3a3e"/>
+      <circle cx="22" cy="8" r="2.5" fill="#3a3a3e"/>
+      <circle cx="32" cy="8" r="2.5" fill="#3a3a3e"/>
+      <path d="M20 56 L28 64 L44 44" fill="none" stroke="#33dd66" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="14" y="88" font-size="11" fill="#33dd66">Download complete</text>
+      <text x="14" y="110" font-size="10" fill="#8a8a8e">&#8594; ~/Downloads</text>
+    </g>
+  </g>
+</svg>

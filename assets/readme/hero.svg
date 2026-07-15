@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="400" viewBox="0 0 1200 400"
+     role="img" aria-labelledby="hero-title hero-desc">
+  <title id="hero-title">yt-otui — a terminal YouTube downloader</title>
+  <desc id="hero-desc">Terminal window recreation of yt-otui's format-selection screen next to the project name and description.</desc>
+
+  <defs>
+    <clipPath id="term-clip">
+      <rect x="700" y="40" width="440" height="320" rx="8"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1200" height="400" rx="20" fill="#0a0a0c"/>
+  <rect x="1" y="1" width="1198" height="398" rx="19" fill="none" stroke="#1c1c1f" stroke-width="1"/>
+
+  <!-- Title block -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <text x="64" y="66" font-size="15" letter-spacing="3" fill="#7a7a7e">TERMINAL &#183; YOUTUBE DOWNLOADER</text>
+
+    <text x="62" y="150" font-size="66" font-weight="700" fill="#f4f4f4">yt-otui</text>
+    <rect x="378" y="112" width="16" height="46" fill="#FF0000">
+      <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.45;0.5;0.95;1" dur="1.6s" repeatCount="indefinite"/>
+    </rect>
+
+    <text x="64" y="204" font-size="21" fill="#c8c8cc">Paste a YouTube URL, pick a quality tier,</text>
+    <text x="64" y="234" font-size="21" fill="#c8c8cc">and download &#8212; without leaving the terminal.</text>
+
+    <!-- tech chips -->
+    <g font-size="14" fill="#9a9a9e">
+      <rect x="64" y="270" width="62" height="26" rx="3" fill="none" stroke="#2c2c30"/>
+      <text x="76" y="287">Bun</text>
+
+      <rect x="134" y="270" width="92" height="26" rx="3" fill="none" stroke="#2c2c30"/>
+      <text x="146" y="287">OpenTUI</text>
+
+      <rect x="234" y="270" width="82" height="26" rx="3" fill="none" stroke="#2c2c30"/>
+      <text x="246" y="287">React</text>
+
+      <rect x="324" y="270" width="82" height="26" rx="3" fill="none" stroke="#2c2c30"/>
+      <text x="336" y="287">yt-dlp</text>
+    </g>
+
+    <text x="64" y="348" font-size="17" fill="#5f5f63">$</text>
+    <text x="82" y="348" font-size="17" fill="#c8c8cc">bun start</text>
+  </g>
+
+  <!-- Terminal window: recreation of the format-selection screen -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <rect x="700" y="40" width="440" height="320" rx="8" fill="#08080a" stroke="#2a2a2e" stroke-width="1"/>
+
+    <g clip-path="url(#term-clip)">
+      <rect x="700" y="40" width="440" height="28" fill="#161618"/>
+      <circle cx="718" cy="54" r="4" fill="#3a3a3e"/>
+      <circle cx="732" cy="54" r="4" fill="#3a3a3e"/>
+      <circle cx="746" cy="54" r="4" fill="#3a3a3e"/>
+      <text x="920" y="58" font-size="12" fill="#5f5f63" text-anchor="middle">yt-otui</text>
+
+      <!-- Video info panel -->
+      <rect x="718" y="86" width="404" height="72" rx="2" fill="none" stroke="#2c2c30"/>
+      <rect x="732" y="80" width="38" height="14" fill="#08080a"/>
+      <text x="736" y="91" font-size="11" fill="#8a8a8e">Video</text>
+      <text x="730" y="108" font-size="13" fill="#e6e6e6">Big Buck Bunny &#8212; Official Trailer</text>
+      <text x="730" y="128" font-size="12" fill="#888888">Blender Foundation</text>
+      <text x="730" y="146" font-size="12" fill="#888888">9:56 &#183; 1,204,532 views</text>
+
+      <!-- Format select panel -->
+      <rect x="718" y="176" width="404" height="150" rx="2" fill="none" stroke="#2c2c30"/>
+      <rect x="732" y="170" width="140" height="14" fill="#08080a"/>
+      <text x="736" y="181" font-size="11" fill="#8a8a8e">Select format/quality</text>
+
+      <rect x="730" y="192" width="380" height="30" fill="#1a1a1d"/>
+      <rect x="730" y="192" width="3" height="30" fill="#FF0000"/>
+      <text x="742" y="207" font-size="13" fill="#f4f4f4">Best available</text>
+      <text x="742" y="220" font-size="11" fill="#888888">Highest quality video + audio</text>
+
+      <text x="742" y="240" font-size="13" fill="#c8c8cc">1080p MP4</text>
+      <text x="742" y="253" font-size="11" fill="#7a7a7e">~245.3 MB</text>
+
+      <text x="742" y="273" font-size="13" fill="#c8c8cc">720p MP4</text>
+      <text x="742" y="286" font-size="11" fill="#7a7a7e">~128.7 MB</text>
+
+      <text x="742" y="306" font-size="13" fill="#c8c8cc">Audio only (M4A)</text>
+
+      <text x="732" y="346" font-size="12" fill="#7a7a7e">Enter to download &#183; Esc to go back</text>
+    </g>
+  </g>
+</svg>
