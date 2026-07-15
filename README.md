@@ -53,14 +53,13 @@ The choice persists to `~/.config/yt-otui/config.json`; delete that file to rese
 ## Under the hood
 
 - Every `yt-dlp` call runs via `Bun.spawn` (`src/ytdlp.ts`) — `-J` for metadata, a `--progress-template` piped line-by-line for live speed/ETA during download.
-- The UI is a five-screen state machine (`src/App.tsx`): URL → Loading → Format → Downloading → Done, with error and Esc paths back to URL.
+- The UI is a screen state machine (`src/App.tsx`): URL → Loading → Format → Downloading → Done for single videos, with a parallel Playlist Choice → Playlist Format → Playlist Downloading → Playlist Done path for playlist URLs, and error/Esc paths back to URL.
 - Rendered entirely with OpenTUI's React bindings — no browser, no Electron.
 
 See [`openwiki/architecture/overview.md`](./openwiki/architecture/overview.md) for the full component and data-flow breakdown.
 
 ## Limitations
 
-- Playlists aren't supported — every `yt-dlp` call passes `--no-playlist` by design.
 - No automated test suite yet; see `openwiki/quickstart.md` for the manual verification steps used today.
 
 ## Development

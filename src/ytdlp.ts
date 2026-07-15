@@ -19,6 +19,17 @@ export interface VideoInfo {
   formats: RawFormat[]
 }
 
+export interface PlaylistEntry {
+  id: string
+  title: string
+  url: string
+}
+
+export interface PlaylistInfo {
+  title: string
+  entries: PlaylistEntry[]
+}
+
 export interface DownloadProgress {
   percent: string
   speed: string
@@ -34,8 +45,41 @@ export function checkYtDlpInstalled(): boolean {
   return Bun.which("yt-dlp") !== null
 }
 
-export async function fetchVideoInfo(url: string): Promise<VideoInfo> {
-  const proc = Bun.spawn(["yt-dlp", "-J", "--no-playlist", url], {
+export function parseYouTubeUrl(url: string): { videoId: string | null; listId: string | null } {
+  try {
+    const parsed = new URL(url)
+    const listId = parsed.searchParams.get("list")
+    let videoId = parsed.searchParams.get("v")
+    if (!videoId && parsed.hostname.includes("youtu.be")) {
+      videoId = parsed.pathname.slice(1) || null
+    }
+    return { videoId, listId }
+  } catch {
+    return { videoId: null, listId: null }
+  }
+}
+
+export function sanitizeFilename(name: string): string {
+  return name.replace(/[/\\:*?"<>|]/g, "_").trim() || "playlist"
+}
+
+function isPlaylistInfo(data: unknown): data is { title?: string; entries: unknown[] } {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    Array.isArray((data as { entries?: unknown }).entries)
+  )
+}
+
+export async function fetchInfo(
+  url: string,
+  opts?: { noPlaylist?: boolean },
+): Promise<VideoInfo | PlaylistInfo> {
+  const args = ["yt-dlp", "-J", "--flat-playlist"]
+  if (opts?.noPlaylist) args.push("--no-playlist")
+  args.push(url)
+
+  const proc = Bun.spawn(args, {
     stdout: "pipe",
     stderr: "pipe",
   })
@@ -51,7 +95,23 @@ export async function fetchVideoInfo(url: string): Promise<VideoInfo> {
     throw new Error(tail || `yt-dlp exited with code ${exitCode}`)
   }
 
-  return JSON.parse(stdout) as VideoInfo
+  const data = JSON.parse(stdout)
+
+  if (isPlaylistInfo(data)) {
+    const entries: PlaylistEntry[] = (data.entries as Record<string, unknown>[])
+      .filter((e) => typeof e.id === "string")
+      .map((e) => ({
+        id: e.id as string,
+        title: (e.title as string) ?? (e.id as string),
+        url:
+          (e.webpage_url as string) ??
+          (typeof e.url === "string" && e.url.startsWith("http") ? (e.url as string) : null) ??
+          `https://www.youtube.com/watch?v=${e.id}`,
+      }))
+    return { title: data.title ?? "Playlist", entries }
+  }
+
+  return data as VideoInfo
 }
 
 export async function downloadVideo(
@@ -128,4 +188,34 @@ export async function downloadVideo(
   const fileSize = (await file.exists()) ? file.size : 0
 
   return { filePath, fileSize }
+}
+
+export interface PlaylistItemUpdate {
+  status: "downloading" | "done" | "error"
+  progress?: DownloadProgress
+  result?: DownloadResult
+  error?: string
+}
+
+export async function downloadPlaylist(
+  entries: PlaylistEntry[],
+  formatArgs: string[],
+  downloadDir: string,
+  onItemUpdate: (index: number, update: PlaylistItemUpdate) => void,
+): Promise<void> {
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]!
+    onItemUpdate(i, { status: "downloading" })
+    try {
+      const result = await downloadVideo(entry.url, formatArgs, downloadDir, (progress) => {
+        onItemUpdate(i, { status: "downloading", progress })
+      })
+      onItemUpdate(i, { status: "done", result })
+    } catch (err) {
+      onItemUpdate(i, {
+        status: "error",
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
 }
