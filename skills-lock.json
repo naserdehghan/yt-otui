@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "opentui": {
+      "source": "naserdehghan/my-skills",
+      "sourceType": "github",
+      "skillPath": "skills/opentui/SKILL.md",
+      "computedHash": "778cfcb0e4afdb906f580bdabf70473052548e39243890140bdea785f298f211"
+    }
+  }
+}
